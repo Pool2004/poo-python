@@ -6,20 +6,24 @@ Tema: Patrón Repository y Data Mapper (Abstracciones e Implementación SQLAlche
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy.orm import Session
+
+if TYPE_CHECKING:
+    try:
+        from .servicios import ResumenOrden
+    except (ImportError, ValueError):
+        from servicios import ResumenOrden
 
 try:
     from .modelos import Cliente, Producto, ProductoFisico, ProductoDigital
     from .modelos_orm import ClienteORM, ProductoORM, OrdenORM, ItemOrdenORM
     from .carrito import CarritoCompras
-    from .servicios import ResumenOrden
 except (ImportError, ValueError):
     from modelos import Cliente, Producto, ProductoFisico, ProductoDigital
     from modelos_orm import ClienteORM, ProductoORM, OrdenORM, ItemOrdenORM
     from carrito import CarritoCompras
-    from servicios import ResumenOrden
 
 
 # ==============================================================================
@@ -65,7 +69,7 @@ class IRepositorioOrden(ABC):
     """Contrato para la persistencia y consulta de Órdenes de Compra."""
 
     @abstractmethod
-    def guardar_orden(self, resumen: ResumenOrden, carrito: CarritoCompras) -> OrdenORM:
+    def guardar_orden(self, resumen: "ResumenOrden", carrito: CarritoCompras) -> OrdenORM:
         pass
 
     @abstractmethod
@@ -203,7 +207,7 @@ class SQLAlchemyOrdenRepositorio(IRepositorioOrden):
     def __init__(self, sesion: Session):
         self.sesion = sesion
 
-    def guardar_orden(self, resumen: ResumenOrden, carrito: CarritoCompras) -> OrdenORM:
+    def guardar_orden(self, resumen: "ResumenOrden", carrito: CarritoCompras) -> OrdenORM:
         # 1. Asegurar que el cliente existe en BD
         cliente_orm = self.sesion.get(ClienteORM, resumen.cliente.id_usuario)
         if not cliente_orm:
