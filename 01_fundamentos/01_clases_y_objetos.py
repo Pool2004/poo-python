@@ -51,13 +51,17 @@ class Celular:
         self.bateria = max(0, min(100, bateria))  # Asegura rango 0-100
         self.encendido = False
 
+    def __str__(self) -> str:
+        return f"El objeto es: {self.__dict__}"
+
     def encender(self) -> str:
         """Enciende el teléfono si tiene batería suficiente."""
         if self.bateria <= 0:
             return f"❌ [{self.marca} {self.modelo}] No tiene batería suficiente para encender."
-
+            # Apple iphone duo No tiene batería suficiente...
         if self.encendido:
             return f"ℹ️ [{self.marca} {self.modelo}] Ya se encuentra encendido."
+            # Apple iphone duo Ya se encuentra encendido...
 
         self.encendido = True
         return f"✅ [{self.marca} {self.modelo}] Se ha encendido correctamente."
@@ -105,6 +109,8 @@ class Celular:
             f"└{'─' * 38}┘"
         )
 
+    
+
 
 # ==============================================================================
 # DEMOSTRACIÓN PRÁCTICA
@@ -122,8 +128,8 @@ if __name__ == "__main__":
     telefono_maria = Celular("Apple", "iPhone 15 Pro", bateria=50)
 
     # Cada objeto es independiente y ocupa su propio espacio en memoria
-    print(f"Objeto Juan:  {telefono_juan} (ID en memoria: {hex(id(telefono_juan))})")
-    print(f"Objeto María: {telefono_maria} (ID en memoria: {hex(id(telefono_maria))})")
+    # print(f"Objeto Juan:  {telefono_juan} (ID en memoria: {hex(id(telefono_juan))})")
+    # print(f"Objeto María: {telefono_maria} (ID en memoria: {hex(id(telefono_maria))})")
 
     # 2. Acceso a atributos y llamadas a métodos
     print("\n--- 2. Estado inicial e Interacción ---")
@@ -134,18 +140,19 @@ if __name__ == "__main__":
     print(telefono_juan.usar_app("YouTube", 25))
     print(telefono_juan.usar_app("Juego 3D", 40))
     print(telefono_juan.obtener_info())
+    print("El objeto es:" , telefono_juan)
 
-    print("\nAcciones con el teléfono de María:")
-    print(telefono_maria.usar_app("WhatsApp", 10))  # Aún está apagado
-    print(telefono_maria.encender())
-    print(telefono_maria.usar_app("Instagram", 30))
-    print(telefono_maria.cargar(40))
-    print(telefono_maria.obtener_info())
+    # print("\nAcciones con el teléfono de María:")
+    # print(telefono_maria.usar_app("WhatsApp", 10))  # Aún está apagado
+    # print(telefono_maria.encender())
+    # print(telefono_maria.usar_app("Youtube", 30))
+    # print(telefono_maria.cargar(40))
+    # print(telefono_maria.obtener_info())
 
-    # 3. Demostración de cómo Python traduce self tras bambalinas:
-    print("\n--- 3. ¿Cómo funciona 'self' internamente? ---")
-    # Estas dos llamadas son EXACTAMENTE equivalentes en Python:
-    resultado_metodo = telefono_juan.encender()
-    resultado_clase = Celular.encender(telefono_juan)
-    print(f"Llamada normal:  telefono_juan.encender() -> {resultado_metodo}")
-    print(f"Llamada directa: Celular.encender(telefono_juan) -> {resultado_clase}")
+    # # 3. Demostración de cómo Python traduce self tras bambalinas:
+    # print("\n--- 3. ¿Cómo funciona 'self' internamente? ---")
+    # # Estas dos llamadas son EXACTAMENTE equivalentes en Python:
+    # resultado_metodo = telefono_juan.encender()
+    # resultado_clase = Celular.encender(telefono_juan)
+    # print(f"Llamada normal:  telefono_juan.encender() -> {resultado_metodo}")
+    # print(f"Llamada directa: Celular.encender(telefono_juan) -> {resultado_clase}")

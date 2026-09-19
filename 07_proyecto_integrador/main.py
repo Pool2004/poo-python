@@ -1,10 +1,11 @@
 """
 ==============================================================================
 Módulo: 07_proyecto_integrador / main.py
-Tema: Ejecución y Demostración Integral del Sistema de Comercio Electrónico.
+Tema: Ejecución y Demostración Integral del Sistema con ORM MySQL (SQLAlchemy).
 ==============================================================================
 """
 
+import os
 import sys
 
 if sys.stdout.encoding != "utf-8":
@@ -13,7 +14,6 @@ if sys.stdout.encoding != "utf-8":
     except Exception:
         pass
 
-import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
@@ -27,6 +27,13 @@ try:
         AuditoriaFiscal,
         DescuentoPorcentaje
     )
+    from .database import inicializar_base_datos, obtener_sesion
+    from .modelos_orm import ClienteORM, ProductoORM, OrdenORM
+    from .repositorios import (
+        SQLAlchemyClienteRepositorio,
+        SQLAlchemyProductoRepositorio,
+        SQLAlchemyOrdenRepositorio
+    )
 except (ImportError, ValueError):
     from modelos import Cliente, ProductoFisico, ProductoDigital
     from carrito import CarritoCompras
@@ -38,12 +45,30 @@ except (ImportError, ValueError):
         AuditoriaFiscal,
         DescuentoPorcentaje
     )
+    from database import inicializar_base_datos, obtener_sesion
+    from modelos_orm import ClienteORM, ProductoORM, OrdenORM
+    from repositorios import (
+        SQLAlchemyClienteRepositorio,
+        SQLAlchemyProductoRepositorio,
+        SQLAlchemyOrdenRepositorio
+    )
 
 
 def ejecutar_demostracion():
-    print("=" * 70)
-    print("PROYECTO INTEGRADOR: Sistema de E-Commerce y Pasarela Multicanal")
-    print("=" * 70)
+    print("=" * 75)
+    print("PROYECTO INTEGRADOR: Sistema de E-Commerce con ORM MySQL y Pasarela")
+    print("=" * 75)
+
+    # 0. Inicialización del Motor ORM y Base de Datos MySQL
+    print("\n--- 0. Conexión e Inicialización de Base de Datos MySQL (SQLAlchemy 2.0) ---")
+    orm_activo = False
+    try:
+        inicializar_base_datos()
+        orm_activo = True
+    except Exception as err:
+        print(f"⚠️ [AVISO]: No se pudo conectar con el servidor MySQL: {err}")
+        print("💡 Para iniciar MySQL con Docker ejecuta: docker compose up -d")
+        print("ℹ️ Continuando en modo en-memoria...")
 
     # 1. Creación de Actores del Sistema
     print("\n--- 1. Creación de Cliente (Encapsulación y Validación) ---")
@@ -54,7 +79,7 @@ def ejecutar_demostracion():
         direccion="Calle 72 # 11-45, Bogotá, Colombia",
         saldo_billetera=1200.0
     )
-    print(f"Cliente registrado: {cliente}")
+    print(f"Cliente registrado en dominio: {cliente}")
 
     # 2. Catálogo de Productos (Herencia y Polimorfismo)
     print("\n--- 2. Catálogo de Productos (Físicos y Digitales) ---")
@@ -65,6 +90,19 @@ def ejecutar_demostracion():
     print(f"Producto 1: {teclado} | Envío estimado: ${teclado.calcular_costo_envio():.2f}")
     print(f"Producto 2: {monitor} | Envío estimado: ${monitor.calcular_costo_envio():.2f}")
     print(f"Producto 3: {curso}   | Envío estimado: ${curso.calcular_costo_envio():.2f}")
+
+    # Si el ORM está activo, sincronizamos cliente y catálogo a MySQL mediante el Patrón Repositorio
+    if orm_activo:
+        print("\n📥 [REPOSITORIOS]: Sincronizando catálogo y cliente en MySQL...")
+        with obtener_sesion() as sesion:
+            repo_cliente = SQLAlchemyClienteRepositorio(sesion)
+            repo_producto = SQLAlchemyProductoRepositorio(sesion)
+
+            repo_cliente.guardar(cliente)
+            repo_producto.guardar(teclado)
+            repo_producto.guardar(monitor)
+            repo_producto.guardar(curso)
+        print("✅ Registros sincronizados en MySQL mediante Data Mapper y Repositorios.")
 
     # 3. Construcción del Carrito (Dunder Methods)
     print("\n--- 3. Operaciones de Carrito con Dunder Methods ---")
@@ -86,30 +124,58 @@ def ejecutar_demostracion():
     bus_eventos.suscribir(NotificadorEmailCliente())
     bus_eventos.suscribir(AuditoriaFiscal())
 
-    # 5. Inyección de Dependencias y Procesamiento de Checkout (SOLID + Strategy)
+    # 5. Inyección de Dependencias y Procesamiento de Checkout (SOLID + Strategy + ORM)
     print("\n--- 5. Ejecución del Checkout con Inyección de Dependencias ---")
     pasarela_stripe = StripePasarela(api_key="sk_live_master_992182")
-    checkout = ServicioCheckout(pasarela=pasarela_stripe, publicador=bus_eventos)
-
-    # Aplicamos estrategia de descuento (Black Friday 15%)
     promo_15 = DescuentoPorcentaje(15.0)
 
-    orden_final = checkout.procesar_compra(
-        cliente=cliente,
-        carrito=carrito,
-        estrategia_descuento=promo_15
-    )
+    if orm_activo:
+        with obtener_sesion() as sesion:
+            repo_orden = SQLAlchemyOrdenRepositorio(sesion)
+            checkout = ServicioCheckout(
+                pasarela=pasarela_stripe,
+                publicador=bus_eventos,
+                repositorio_orden=repo_orden
+            )
+            orden_final = checkout.procesar_compra(
+                cliente=cliente,
+                carrito=carrito,
+                estrategia_descuento=promo_15
+            )
+    else:
+        checkout = ServicioCheckout(pasarela=pasarela_stripe, publicador=bus_eventos)
+        orden_final = checkout.procesar_compra(
+            cliente=cliente,
+            carrito=carrito,
+            estrategia_descuento=promo_15
+        )
 
-    print("\n" + "=" * 70)
+    print("\n" + "=" * 75)
     print("RESUMEN DE ORDEN GENERADA EXITOSAMENTE")
-    print("=" * 70)
+    print("=" * 75)
     print(f"ID Orden:         {orden_final.id_orden}")
     print(f"Subtotal Bruto:   ${orden_final.subtotal:>9.2f}")
     print(f"Descuento ({promo_15.descripcion}): -${orden_final.descuento:>8.2f}")
     print(f"Costo de Envío:   +${orden_final.envio:>8.2f}")
     print(f"Total Facturado:   ${orden_final.total:>9.2f}")
     print(f"Transacción:      {orden_final.transaccion}")
-    print("=" * 70)
+    print("=" * 75)
+
+    # 6. Demostración de Consultas y Relaciones ORM
+    if orm_activo:
+        print("\n--- 6. Verificación de Persistencia y Consultas Relacionales (ORM) ---")
+        with obtener_sesion() as sesion:
+            orden_recuperada = sesion.get(OrdenORM, orden_final.id_orden)
+            if orden_recuperada:
+                print(f"🔍 [ORM CONSULTA]: Orden recuperada desde MySQL: {orden_recuperada}")
+                print(f"   👤 Cliente relación: {orden_recuperada.cliente.nombre} "
+                      f"(Email: {orden_recuperada.cliente.email})")
+                print(f"   📑 Líneas de Detalle almacenadas ({len(orden_recuperada.items)} items):")
+                for itm in orden_recuperada.items:
+                    print(f"      • SKU: {itm.producto_sku:<8} | "
+                          f"Nombre: {itm.producto.nombre:<26} | "
+                          f"Cant: {itm.cantidad} | Subtotal: ${itm.subtotal:>6.2f}")
+                print(f"   💳 Estado: {orden_recuperada.estado} | Total: ${orden_recuperada.total:.2f}")
 
 
 if __name__ == "__main__":

@@ -12,10 +12,15 @@ try:
     from .modelos import Cliente
     from .carrito import CarritoCompras
     from .pasarelas import PasarelaPago, ResultadoTransaccion
+    from .repositorios import IRepositorioOrden
 except (ImportError, ValueError):
     from modelos import Cliente
     from carrito import CarritoCompras
     from pasarelas import PasarelaPago, ResultadoTransaccion
+    try:
+        from repositorios import IRepositorioOrden
+    except ImportError:
+        IRepositorioOrden = None
 
 if sys.stdout.encoding != "utf-8":
     try:
@@ -109,10 +114,16 @@ class ResumenOrden:
 class ServicioCheckout:
     """Orquestador del proceso de compra desacoplado por DIP."""
 
-    def __init__(self, pasarela: PasarelaPago, publicador: PublicadorEventos):
+    def __init__(
+        self,
+        pasarela: PasarelaPago,
+        publicador: PublicadorEventos,
+        repositorio_orden: "IRepositorioOrden | None" = None
+    ):
         # Inyección de dependencias
         self.pasarela = pasarela
         self.publicador = publicador
+        self.repositorio_orden = repositorio_orden
 
     def procesar_compra(
         self,
@@ -146,7 +157,7 @@ class ServicioCheckout:
         # Notificar a los observadores (Observer Pattern)
         self.publicador.emitir_orden_completada(id_orden, cliente, total_a_pagar)
 
-        return ResumenOrden(
+        resumen = ResumenOrden(
             id_orden=id_orden,
             cliente=cliente,
             subtotal=subtotal,
@@ -155,3 +166,10 @@ class ServicioCheckout:
             total=total_a_pagar,
             transaccion=resultado_pago
         )
+
+        # Persistencia en base de datos mediante el ORM (si el repositorio fue inyectado)
+        if self.repositorio_orden is not None:
+            self.repositorio_orden.guardar_orden(resumen, carrito)
+            print(f"💾 [ORM PERSISTENCIA]: Orden #{id_orden} e items guardados exitosamente en MySQL.")
+
+        return resumen

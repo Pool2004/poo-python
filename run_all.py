@@ -42,7 +42,7 @@ MODULOS = [
     ("06_patrones_diseno/01_creacionales.py", "Patrones: Creacionales (Singleton, Factory, Builder)"),
     ("06_patrones_diseno/02_estructurales.py", "Patrones: Estructurales (Adapter, Decorator, Facade)"),
     ("06_patrones_diseno/03_comportamiento.py", "Patrones: Comportamiento (Strategy, Observer, Command)"),
-    ("07_proyecto_integrador/main.py", "Proyecto Integrador: Sistema E-Commerce & Pagos"),
+    ("07_proyecto_integrador/main.py", "Proyecto Integrador: E-Commerce con ORM MySQL (SQLAlchemy)"),
 ]
 
 

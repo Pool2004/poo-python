@@ -27,6 +27,8 @@ poo-python/
 │
 ├── README.md                           # Documentación central y guía pedagógica
 ├── run_all.py                          # Menú CLI interactivo y automatizador de ejecución
+├── docker-compose.yml                  # Contenedor oficial de MySQL 8.0 para persistencia
+├── .env.example                        # Plantilla de variables de conexión a base de datos
 │
 ├── 01_fundamentos/                     # Bases fundamentales de POO
 │   ├── 01_clases_y_objetos.py          # Clases, instancias, 'self', atributos de instancia
@@ -66,20 +68,24 @@ poo-python/
 │   ├── 02_estructurales.py             # Adapter (APIs incompatibles), Decorator OOP y Facade
 │   └── 03_comportamiento.py            # Strategy, Observer (Pub/Sub) y Command con Undo
 │
-├── 07_proyecto_integrador/             # Sistema Comercial Completo de E-Commerce & Pasarela de Pagos
+├── 07_proyecto_integrador/             # Sistema Comercial Completo con ORM MySQL y Pagos
 │   ├── __init__.py
-│   ├── modelos.py                      # Clientes, Usuarios y Productos Físicos/Digitales
+│   ├── database.py                     # Engine, SessionLocal y Base Declarative (SQLAlchemy 2.0)
+│   ├── modelos.py                      # Clientes, Usuarios y Productos (Dominio Puro)
+│   ├── modelos_orm.py                  # Entidades Mapeadas relacionales (ClienteORM, OrdenORM, etc.)
+│   ├── repositorios.py                 # Patrón Repository & Data Mapper (DIP y desacoplamiento)
 │   ├── carrito.py                      # Contenedor con Dunder Methods (+, len, in, iter)
 │   ├── pasarelas.py                    # Abstracción de pasarelas (Stripe, PayPal)
-│   ├── servicios.py                    # Checkout, Inyección de Dependencias, Estrategias y Observadores
-│   └── main.py                         # Demostración del flujo completo de compra
+│   ├── servicios.py                    # Checkout, Inyección de Dependencias y Persistencia ORM
+│   └── main.py                         # Demostración del flujo completo de compra y persistencia
 │
 └── 08_pruebas/                         # Pruebas Unitarias Automatizadas (unittest estándar)
     ├── __init__.py
     ├── test_fundamentos.py             # Verificación del bloque 01
     ├── test_pilares.py                 # Verificación del bloque 02
     ├── test_dunder.py                  # Verificación del bloque 03
-    └── test_proyecto_integrador.py     # Verificación del proyecto integrador
+    ├── test_proyecto_integrador.py     # Verificación del proyecto integrador
+    └── test_orm.py                     # Verificación de la capa ORM y Repositorios
 ```
 
 ---
@@ -148,15 +154,40 @@ flowchart TD
   - **Observer (Pub/Sub)**: Sistema reactivo de notificación de eventos a múltiples suscriptores.
   - **Command**: Encapsulación de acciones con soporte completo para deshacer operaciones (Undo / Ctrl+Z).
 
-### 7. Proyecto Integrador (`07_proyecto_integrador/`)
-Un caso de estudio real de una **Plataforma de E-Commerce y Pagos Multicanal** que amalgama todos los conceptos anteriores:
-- Modelado con `@dataclass`, encapsulación y validaciones (`modelos.py`).
-- Carrito de compras con métodos mágicos: `len(carrito)`, `carrito + producto`, `for item in carrito:` (`carrito.py`).
-- Pasarelas de pago abstractas (`Stripe`, `PayPal`) aplicando polimorfismo (`pasarelas.py`).
-- Servicio de Checkout con Inyección de Dependencias, estrategias de descuento y bus de observadores para facturación y correos (`servicios.py`).
+### 7. Proyecto Integrador con ORM MySQL (`07_proyecto_integrador/`)
+Un caso de estudio real de una **Plataforma de E-Commerce y Pagos Multicanal** con persistencia relacional completa:
+- **Modelos de Dominio Puro**: `@dataclass`, encapsulación y validaciones (`modelos.py`).
+- **Carrito y Dunder Methods**: `len(carrito)`, `carrito + producto`, iteración polimórfica (`carrito.py`).
+- **Pasarelas de Pago Polimórficas**: `Stripe`, `PayPal` (`pasarelas.py`).
+- **Servicios y Patrones**: Inyección de Dependencias (DIP), Strategy para descuentos, Observer para eventos (`servicios.py`).
+- **Capa ORM MySQL (SQLAlchemy 2.0 Declarative)**: Mapeo de entidades (`ClienteORM`, `ProductoORM`, `OrdenORM`, `ItemOrdenORM`) con relaciones 1-a-Muchos y cascada (`modelos_orm.py`, `database.py`).
+- **Patrón Repository & Data Mapper**: Contratos abstractos (`IRepositorioCliente`, `IRepositorioProducto`, `IRepositorioOrden`) e implementaciones desacopladas con transaccionalidad atómica (`repositorios.py`).
 
 ### 8. Pruebas Unitarias Automatizadas (`08_pruebas/`)
-Suite integral con **17 pruebas automatizadas** utilizando el módulo estándar `unittest` de Python, garantizando que cada concepto, validación y regla de negocio funcione con 100% de confiabilidad sin requerir dependencias externas.
+Suite integral con **21 pruebas automatizadas** utilizando `unittest` estándar, garantizando:
+- Fundamentos y ciclo de vida de objetos.
+- Los 4 pilares y contratos abstractos.
+- Métodos mágicos (Dunder Data Model).
+- Lógica completa del carrito y checkout.
+- Mapeo ORM, persistencia relacional, repositorios y rollback transaccional ante fallos (`test_orm.py`).
+
+---
+
+## 🐳 Base de Datos MySQL (Contenedor Docker o Local)
+
+El proyecto soporta ejecución contra **MySQL local (XAMPP / nativo)** o mediante un **contenedor Docker** con la imagen oficial de MySQL 8.0:
+
+### Opción A: Levantar MySQL con Docker (Recomendado para entornos limpios)
+```bash
+# Iniciar contenedor MySQL en segundo plano
+docker compose up -d
+
+# Detener el contenedor cuando finalices
+docker compose down
+```
+
+### Opción B: MySQL Local (XAMPP / MariaDB)
+Si ya tienes XAMPP o MySQL ejecutándose en el puerto 3306, el sistema se conectará directamente utilizando las credenciales configuradas en `.env` (por defecto `root` sin contraseña en `127.0.0.1:3306`).
 
 ---
 
@@ -164,7 +195,7 @@ Suite integral con **17 pruebas automatizadas** utilizando el módulo estándar 
 
 ### Requisitos
 - **Python 3.11** o superior instalado en el sistema.
-- Cero dependencias externas necesarias (utiliza únicamente la librería estándar de Python).
+- Paquetes de base de datos (opcional si se utiliza la capa ORM): `SQLAlchemy` y `PyMySQL` (instalables con `pip install sqlalchemy pymysql python-dotenv`).
 
 ### 1. Lanzador Interactivo (Recomendado)
 Ejecuta el menú visual interactivo en la terminal:
@@ -173,7 +204,7 @@ python run_all.py
 ```
 Desde el menú podrás elegir qué lección individual ejecutar, correr todas las lecciones en secuencia (`T`), o ejecutar la suite de pruebas (`P`).
 
-### 2. Ejecutar la Suite de Pruebas Unitarias
+### 2. Ejecutar la Suite de Pruebas Unitarias (21 tests)
 ```bash
 python -m unittest discover -s 08_pruebas -p "test_*.py" -v
 ```
@@ -182,27 +213,7 @@ o directamente con el CLI:
 python run_all.py test
 ```
 
-### 3. Ejecutar Cualquier Módulo Individualmente
-Cada archivo es 100% independiente y ejecutable:
+### 3. Ejecutar el Proyecto Integrador con ORM MySQL
 ```bash
-# Fundamentos
-python 01_fundamentos/01_clases_y_objetos.py
-
-# Pilares
-python 02_pilares/01_encapsulamiento.py
-
-# Dunder Methods
-python 03_dunder_methods/03_operadores_aritmeticos.py
-
-# Avanzado
-python 04_avanzado/01_dataclasses.py
-
-# SOLID
-python 05_solid/05_dependency_inversion.py
-
-# Patrones GoF
-python 06_patrones_diseno/01_creacionales.py
-
-# Proyecto Integrador
 python 07_proyecto_integrador/main.py
 ```
